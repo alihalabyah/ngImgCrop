@@ -326,6 +326,21 @@ crop.factory('cropHost', ['$document', 'cropAreaCircle', 'cropAreaSquare', 'crop
       drawScene();
     };
 
+    this.getCropAreaInActualCoord = function() {
+      if (!image) {
+        return;
+      }
+
+      var displayScale = image.width / ctx.canvas.width;
+      var size = theArea.getSize();
+      return {
+        x: size.x * displayScale,
+        y: size.y * displayScale,
+        width: size.w * displayScale,
+        height: size.h * displayScale,
+      };
+    };
+
     /* Life Cycle begins */
 
     // Init Context var
