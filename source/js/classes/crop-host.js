@@ -112,6 +112,7 @@ crop.factory('cropHost', ['$document', 'cropAreaCircle', 'cropAreaSquare', 'crop
       if(image!==null) {
         var offset=getElementOffset(ctx.canvas),
             pageX, pageY;
+        e.changedTouches = e.changedTouches || e.originalEvent.changedTouches;
         if(e.type === 'touchmove') {
           pageX=e.changedTouches[0].pageX;
           pageY=e.changedTouches[0].pageY;
@@ -127,6 +128,7 @@ crop.factory('cropHost', ['$document', 'cropAreaCircle', 'cropAreaSquare', 'crop
     var onMouseDown=function(e) {
       e.preventDefault();
       e.stopPropagation();
+      e.changedTouches = e.changedTouches || e.originalEvent.changedTouches;
       if(image!==null) {
         var offset=getElementOffset(ctx.canvas),
             pageX, pageY;
@@ -146,6 +148,7 @@ crop.factory('cropHost', ['$document', 'cropAreaCircle', 'cropAreaSquare', 'crop
       if(image!==null) {
         var offset=getElementOffset(ctx.canvas),
             pageX, pageY;
+        e.changedTouches = e.changedTouches || e.originalEvent.changedTouches;
         if(e.type === 'touchend') {
           pageX=e.changedTouches[0].pageX;
           pageY=e.changedTouches[0].pageY;

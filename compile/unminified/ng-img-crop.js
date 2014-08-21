@@ -5,7 +5,7 @@
  * Copyright (c) 2014 Alex Kaul
  * License: MIT
  *
- * Generated at Tuesday, August 19th, 2014, 11:11:06 PM
+ * Generated at Thursday, August 21st, 2014, 11:19:00 AM
  */
 (function() {
 'use strict';
@@ -898,6 +898,7 @@ crop.factory('cropHost', ['$document', 'cropAreaCircle', 'cropAreaSquare', 'crop
       if(image!==null) {
         var offset=getElementOffset(ctx.canvas),
             pageX, pageY;
+        e.changedTouches = e.changedTouches || e.originalEvent.changedTouches;
         if(e.type === 'touchmove') {
           pageX=e.changedTouches[0].pageX;
           pageY=e.changedTouches[0].pageY;
@@ -913,6 +914,7 @@ crop.factory('cropHost', ['$document', 'cropAreaCircle', 'cropAreaSquare', 'crop
     var onMouseDown=function(e) {
       e.preventDefault();
       e.stopPropagation();
+      e.changedTouches = e.changedTouches || e.originalEvent.changedTouches;
       if(image!==null) {
         var offset=getElementOffset(ctx.canvas),
             pageX, pageY;
@@ -932,6 +934,7 @@ crop.factory('cropHost', ['$document', 'cropAreaCircle', 'cropAreaSquare', 'crop
       if(image!==null) {
         var offset=getElementOffset(ctx.canvas),
             pageX, pageY;
+        e.changedTouches = e.changedTouches || e.originalEvent.changedTouches;
         if(e.type === 'touchend') {
           pageX=e.changedTouches[0].pageX;
           pageY=e.changedTouches[0].pageY;
