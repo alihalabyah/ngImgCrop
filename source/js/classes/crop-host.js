@@ -1,6 +1,6 @@
 'use strict';
 
-crop.factory('cropHost', ['$document', 'cropAreaCircle', 'cropAreaSquare', function($document, CropAreaCircle, CropAreaSquare) {
+crop.factory('cropHost', ['$document', 'cropAreaCircle', 'cropAreaSquare', 'cropAreaRectangle', function($document, CropAreaCircle, CropAreaSquare, CropAreaRectangle) {
   /* STATIC FUNCTIONS */
 
   // Get Element's Offset
@@ -28,14 +28,15 @@ crop.factory('cropHost', ['$document', 'cropAreaCircle', 'cropAreaSquare', funct
     // Object Pointers
     var ctx=null,
         image=null,
-        theArea=null;
+        theArea=null,
+        self=this;
 
     // Dimensions
     var minCanvasDims=[100,100],
         maxCanvasDims=[300,300];
 
     // Result Image size
-    var resImgSize=200;
+    var resImgSize={w: 200, h: 200};
 
     /* PRIVATE FUNCTIONS */
 
@@ -85,9 +86,21 @@ crop.factory('cropHost', ['$document', 'cropAreaCircle', 'cropAreaSquare', funct
         }
         elCanvas.prop('width',canvasDims[0]).prop('height',canvasDims[1]).css({'margin-left': -canvasDims[0]/2+'px', 'margin-top': -canvasDims[1]/2+'px'});
 
-        theArea.setX(ctx.canvas.width/2);
-        theArea.setY(ctx.canvas.height/2);
-        theArea.setSize(Math.min(200, ctx.canvas.width/2, ctx.canvas.height/2));
+        var cw = ctx.canvas.width;
+        var ch = ctx.canvas.height;
+
+
+        var areaType = self.getAreaType();
+        // enforce 1:1 aspect ratio for square-like selections
+        if ((areaType === 'circle') || (areaType === 'square')) {
+          cw = ch = Math.min(cw, ch);
+        }
+
+        theArea.setSize({ w: Math.min(200, cw / 2),
+                          h: Math.min(200, ch / 2)});
+        //TODO: set top left corner point
+        theArea.setCenterPoint({x: ctx.canvas.width/2, y: ctx.canvas.height/2});
+
       } else {
         elCanvas.prop('width',0).prop('height',0).css({'margin-top': 0});
       }
@@ -99,6 +112,7 @@ crop.factory('cropHost', ['$document', 'cropAreaCircle', 'cropAreaSquare', funct
       if(image!==null) {
         var offset=getElementOffset(ctx.canvas),
             pageX, pageY;
+        e.changedTouches = e.changedTouches || e.originalEvent.changedTouches;
         if(e.type === 'touchmove') {
           pageX=e.changedTouches[0].pageX;
           pageY=e.changedTouches[0].pageY;
@@ -114,6 +128,7 @@ crop.factory('cropHost', ['$document', 'cropAreaCircle', 'cropAreaSquare', funct
     var onMouseDown=function(e) {
       e.preventDefault();
       e.stopPropagation();
+      e.changedTouches = e.changedTouches || e.originalEvent.changedTouches;
       if(image!==null) {
         var offset=getElementOffset(ctx.canvas),
             pageX, pageY;
@@ -133,6 +148,7 @@ crop.factory('cropHost', ['$document', 'cropAreaCircle', 'cropAreaSquare', funct
       if(image!==null) {
         var offset=getElementOffset(ctx.canvas),
             pageX, pageY;
+        e.changedTouches = e.changedTouches || e.originalEvent.changedTouches;
         if(e.type === 'touchend') {
           pageX=e.changedTouches[0].pageX;
           pageY=e.changedTouches[0].pageY;
@@ -146,16 +162,22 @@ crop.factory('cropHost', ['$document', 'cropAreaCircle', 'cropAreaSquare', funct
     };
 
 
-    this.getResultImageDataURI=function() {
+    this.getResultImage=function() {
       var temp_ctx, temp_canvas;
       temp_canvas = angular.element('<canvas></canvas>')[0];
       temp_ctx = temp_canvas.getContext('2d');
-      temp_canvas.width = resImgSize;
-      temp_canvas.height = resImgSize;
+      var ris = this.getResultImageSize();
+      temp_canvas.width = ris.w;
+      temp_canvas.height = ris.h;
+      var center = theArea.getCenterPoint();
+      var retObj = {dataURI: null,
+                    imageData: null};
       if(image!==null){
-        temp_ctx.drawImage(image, (theArea.getX()-theArea.getSize()/2)*(image.width/ctx.canvas.width), (theArea.getY()-theArea.getSize()/2)*(image.height/ctx.canvas.height), theArea.getSize()*(image.width/ctx.canvas.width), theArea.getSize()*(image.height/ctx.canvas.height), 0, 0, resImgSize, resImgSize);
+        temp_ctx.drawImage(image, (center.x-theArea.getSize().w/2)*(image.width/ctx.canvas.width), (center.y-theArea.getSize().h/2)*(image.height/ctx.canvas.height), theArea.getSize().w*(image.width/ctx.canvas.width), theArea.getSize().h*(image.height/ctx.canvas.height), 0, 0, ris.w, ris.h);
+        retObj.dataURI = temp_canvas.toDataURL();
+        retObj.imageData = temp_canvas.getContext("2d").getImageData(0, 0, temp_canvas.width, temp_canvas.height);
       }
-      return temp_canvas.toDataURL();
+      return retObj;
     };
 
     this.setNewImageSource=function(imageSource) {
@@ -209,9 +231,12 @@ crop.factory('cropHost', ['$document', 'cropAreaCircle', 'cropAreaSquare', funct
             ratioNewCurHeight=ctx.canvas.height/curHeight,
             ratioMin=Math.min(ratioNewCurWidth, ratioNewCurHeight);
 
-        theArea.setX(theArea.getX()*ratioNewCurWidth);
-        theArea.setY(theArea.getY()*ratioNewCurHeight);
-        theArea.setSize(theArea.getSize()*ratioMin);
+        //TODO: use top left corner point
+        theArea.setSize({w: theArea.getSize().w * ratioMin,
+                         h: theArea.getSize().h * ratioMin});
+        var center = theArea.getCenterPoint();
+        theArea.setCenterPoint({x: center.x*ratioNewCurWidth, y: center.y*ratioNewCurHeight});
+
       } else {
         elCanvas.prop('width',0).prop('height',0).css({'margin-top': 0});
       }
@@ -221,35 +246,80 @@ crop.factory('cropHost', ['$document', 'cropAreaCircle', 'cropAreaSquare', funct
     };
 
     this.setAreaMinSize=function(size) {
-      size=parseInt(size,10);
-      if(!isNaN(size)) {
+      if (angular.isUndefined(size))
+      {
+        return;
+      }
+      size={w: parseInt(size.w,10),
+            h: parseInt(size.h,10)};
+      if(!isNaN(size.w) && !isNaN(size.h)) {
         theArea.setMinSize(size);
         drawScene();
       }
     };
 
+    this.getResultImageSize=function() {
+      if (resImgSize == "selection")
+      {
+        return theArea.getSize();
+      }
+
+      return resImgSize;
+    };
     this.setResultImageSize=function(size) {
-      size=parseInt(size,10);
-      if(!isNaN(size)) {
+      if (angular.isUndefined(size))
+      {
+        return;
+      }
+
+      //allow setting of size to "selection" for mirroring selection's dimensions
+      if (angular.isString(size))
+      {
+        resImgSize = size;
+        return;
+      }
+
+      //allow scalar values for square-like selection shapes
+      if (angular.isNumber(size))
+      {
+        size = parseInt(size, 10);
+        size = {w: size,
+                h: size};
+      }
+
+      size={w: parseInt(size.w, 10),
+            h: parseInt(size.h, 10)};
+      if(!isNaN(size.w) && !isNaN(size.h)) {
         resImgSize=size;
+        drawScene();
       }
     };
 
+    // returns a string of the selection area's type
+    this.getAreaType=function() {
+      return theArea.getType();
+    }
+
     this.setAreaType=function(type) {
+      var center = theArea.getCenterPoint();
       var curSize=theArea.getSize(),
           curMinSize=theArea.getMinSize(),
-          curX=theArea.getX(),
-          curY=theArea.getY();
+          curX= center.x,
+          curY= center.y;
 
       var AreaClass=CropAreaCircle;
       if(type==='square') {
         AreaClass=CropAreaSquare;
+      } else if (type==='rectangle')
+      {
+        AreaClass=CropAreaRectangle;
       }
       theArea = new AreaClass(ctx, events);
       theArea.setMinSize(curMinSize);
       theArea.setSize(curSize);
-      theArea.setX(curX);
-      theArea.setY(curY);
+
+      //TODO: use top left point
+      theArea.setCenterPoint({x: curX, y: curY});
 
       // resetCropHost();
       if(image!==null) {
@@ -257,6 +327,21 @@ crop.factory('cropHost', ['$document', 'cropAreaCircle', 'cropAreaSquare', funct
       }
 
       drawScene();
+    };
+
+    this.getCropAreaInActualCoord = function() {
+      if (!image) {
+        return;
+      }
+
+      var displayScale = image.width / ctx.canvas.width;
+      var size = theArea.getSize();
+      return {
+        x: size.x * displayScale,
+        y: size.y * displayScale,
+        width: size.w * displayScale,
+        height: size.h * displayScale,
+      };
     };
 
     /* Life Cycle begins */
